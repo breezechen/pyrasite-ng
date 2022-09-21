@@ -23,6 +23,9 @@ def inject(pid, filename, verbose=False, gdb_prefix=''):
     """Executes a file in a running Python process."""
     filename = os.path.abspath(filename)
     gdb_cmds = [
+        'set trace-commands on',
+        'set logging on',
+        'set scheduler-locking off',
         '((int (*)())PyPyGILState_Ensure)()',
         '((int (*)(const char *))PyPyRun_SimpleString)("'
             'import sys; sys.path.insert(0, \\"%s\\"); '
