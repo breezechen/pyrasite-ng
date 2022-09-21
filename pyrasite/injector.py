@@ -18,25 +18,34 @@
 import os
 import subprocess
 import platform
+import tempfile
 
 def inject(pid, filename, verbose=False, gdb_prefix=''):
     """Executes a file in a running Python process."""
     filename = os.path.abspath(filename)
+    batch_file = tempfile.NamedTemporaryFile(delete=False)
     gdb_cmds = [
         'set trace-commands on',
         'set logging on',
         'set scheduler-locking off',
-        '((int (*)())PyPyGILState_Ensure)()',
-        '((int (*)(const char *))PyPyRun_SimpleString)("'
+        'call ((int (*)())PyPyGILState_Ensure)()',
+        'call ((int (*)(const char *))PyPyRun_SimpleString)("'
             'import sys; sys.path.insert(0, \\"%s\\"); '
             'sys.path.insert(0, \\"%s\\"); '
             'exec(open(\\"%s\\").read())")' %
                 (os.path.dirname(filename),
                 os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
                 filename),
-        '((void (*) (int) )PyPyGILState_Release)($1)',
+        'call ((void (*) (int) )PyPyGILState_Release)($1)',
         ]
-    cmd = '%sgdb -p %d -batch %s' % (gdb_prefix, pid, ' '.join(["-eval-command='call %s'" % cmd for cmd in gdb_cmds]))
+    batch_file.write('\n'.join(gdb_cmds))
+    batch_file.close()
+
+
+    cmd = '%sgdb -p %d --batch --command=%s' % (gdb_prefix, pid, batch_file.name)
+    if verbose:
+        print('running gdb with cmd ' + cmd)
+    
     p = subprocess.Popen(cmd,
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
