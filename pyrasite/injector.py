@@ -16,9 +16,10 @@
 # Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
 import os
-import subprocess
 import platform
+import subprocess
 import tempfile
+
 
 def inject(pid, filename, verbose=False, gdb_prefix=''):
     """Executes a file in a running Python process."""
@@ -38,7 +39,7 @@ def inject(pid, filename, verbose=False, gdb_prefix=''):
                 filename),
         'call ((void (*) (int) )PyPyGILState_Release)($1)',
         ]
-    batch_file.write('\n'.join(gdb_cmds))
+    batch_file.write('\n'.join(gdb_cmds).encode('utf-8'))
     batch_file.close()
 
 
