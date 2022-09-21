@@ -63,7 +63,7 @@ class PyrasiteMemoryViewer(object):
         return w
 
     def create_disabled_radio_button(self, name):
-        w = urwid.Text('    ' + name)
+        w = urwid.Text(f'    {name}')
         w = urwid.AttrWrap(w, 'button disabled')
         return w
 
@@ -72,7 +72,7 @@ class PyrasiteMemoryViewer(object):
             value = pyrasite.inspect(self.pid, w.obj.max_address)
             if not value:
                 value = 'Unable to inspect remote object. Make sure you have ' \
-                        'the python-debuginfo package installed.'
+                            'the python-debuginfo package installed.'
             self.object_output.set_text(value)
 
     def get_object_buttons(self, group=[]):
@@ -91,7 +91,7 @@ class PyrasiteMemoryViewer(object):
         self.object_buttons = self.get_object_buttons()
 
         # Title
-        self.bigtext = urwid.BigText('pyrasite ' + __version__, None)
+        self.bigtext = urwid.BigText(f'pyrasite {__version__}', None)
         self.bigtext.set_font(urwid.Thin6x6Font())
         bt = urwid.Padding(self.bigtext, 'left', None)
         bt = urwid.AttrWrap(bt, 'bigtext')
@@ -141,7 +141,7 @@ class PyrasiteMemoryViewer(object):
 def main():
     if len(sys.argv) != 2:
         print("[ pyrasite memory viewer ]\n")
-        print("Usage: %s <pid> <objects.json>" % sys.argv[0])
+        print(f"Usage: {sys.argv[0]} <pid> <objects.json>")
         print("\n    pid - the running process id")
         print("")
         sys.exit(1)
@@ -152,14 +152,14 @@ def main():
     pyrasite.inject(pid, payload)
 
     filename = '/tmp/pyrasite-%d-objects.json' % pid
-    
+
     # Work around bug caused by meliae dumping unicode strings:
     # https://bugs.launchpad.net/meliae/+bug/876810
-    with open(filename) as sample_file, open(filename + '.tmp', 'w') as output_file:
+    with open(filename) as sample_file, open(f'{filename}.tmp', 'w') as output_file:
         pattern = re.compile(r"(?<!\\)\\u([dD][0-9a-fA-F]{3,3})")
         for line in sample_file:
             output_file.write(pattern.sub("#S\g<1>", line))
-    os.rename(filename + '.tmp', filename)
+    os.rename(f'{filename}.tmp', filename)
 
     objects = loader.load(filename)
     objects.compute_referrers()
@@ -167,5 +167,5 @@ def main():
     PyrasiteMemoryViewer(pid=pid, objects=objects).main()
 
 
-if '__main__' == __name__:
+if __name__ == '__main__':
     main()

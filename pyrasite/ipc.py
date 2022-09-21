@@ -88,10 +88,7 @@ class PyrasiteIPC(object):
                 p = subprocess.Popen('tasklist /v /fi "pid eq %d" /nh /fo csv' % self.pid,
                                     stdout=subprocess.PIPE, shell=True)
                 tmp = p.communicate()[0].decode('utf-8').strip().split(',')
-                if tmp[-1] == '"N/A"':
-                    self._title = tmp[0][1:-1]
-                else:
-                    self._title = tmp[-1][1:-1]
+                self._title = tmp[0][1:-1] if tmp[-1] == '"N/A"' else tmp[-1][1:-1]
             else:
                 p = subprocess.Popen('ps --no-heading -o cmd= -p %d' % self.pid,
                                     stdout=subprocess.PIPE, shell=True)
@@ -130,7 +127,7 @@ class PyrasiteIPC(object):
             raise Exception('pyrasite was unable to setup a ' +
                             'local server socket')
         else:
-            self.hostname, self.port = self.server_sock.getsockname()[0:2]
+            self.hostname, self.port = self.server_sock.getsockname()[:2]
 
     def create_payload(self):
         """Write out a reverse python connection payload with a custom port"""
@@ -138,20 +135,17 @@ class PyrasiteIPC(object):
         os.chmod(filename, 0o644)
         tmp = os.fdopen(fd, 'w')
         path = dirname(abspath(pyrasite.__file__))
-        payload = open(join(path, 'reverse.py'))
+        with open(join(path, 'reverse.py')) as payload:
+            for line in payload:
+                if line.startswith('#'):
+                    continue
+                line = line.replace('port = 9001', 'port = %d' % self.port)
+                if not self.reliable:
+                    line = line.replace('reliable = True', 'reliable = False')
+                tmp.write(line)
 
-        for line in payload.readlines():
-            if line.startswith('#'):
-                continue
-            line = line.replace('port = 9001', 'port = %d' % self.port)
-            if not self.reliable:
-                line = line.replace('reliable = True', 'reliable = False')
-            tmp.write(line)
-
-        tmp.write('%s().start()\n' % self.reverse)
-        tmp.close()
-        payload.close()
-
+            tmp.write('%s().start()\n' % self.reverse)
+            tmp.close()
         if platform.system() != 'Windows':
             os.chmod(filename, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
@@ -179,32 +173,29 @@ class PyrasiteIPC(object):
 
     def send(self, data):
         """Send arbitrary data to the process via self.sock"""
-        header = ''.encode('utf-8')
         data = data.encode('utf-8')
-        if self.reliable:
-            header = struct.pack('<L', len(data))
+        header = struct.pack('<L', len(data)) if self.reliable else ''.encode('utf-8')
         self.sock.sendall(header + data)
 
     def recv(self):
         """Receive a command from a given socket"""
-        if self.reliable:
-            header_data = self.recv_bytes(4)
-            if len(header_data) == 4:
-                msg_len = struct.unpack('<L', header_data)[0]
-                data = self.recv_bytes(msg_len).decode('utf-8')
-                if len(data) == msg_len:
-                    return data
-        else:
+        if not self.reliable:
             return self.sock.recv(4096).decode('utf-8')
+        header_data = self.recv_bytes(4)
+        if len(header_data) == 4:
+            msg_len = struct.unpack('<L', header_data)[0]
+            data = self.recv_bytes(msg_len).decode('utf-8')
+            if len(data) == msg_len:
+                return data
 
     def recv_bytes(self, n):
         """Receive n bytes from a socket"""
         data = ''.encode('utf-8')
         while len(data) < n:
-            chunk = self.sock.recv(n - len(data))
-            if not chunk:
+            if chunk := self.sock.recv(n - len(data)):
+                data += chunk
+            else:
                 break
-            data += chunk
         return data
 
     def close(self):
@@ -217,4 +208,4 @@ class PyrasiteIPC(object):
             traceback.print_exc()
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.pid)
+        return f"<{self.__class__.__name__} {self.pid}>"

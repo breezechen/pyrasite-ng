@@ -35,8 +35,8 @@ class TestCodeInjection(object):
         program = generate_program()
         try:
             for exe in interpreters():
-                print("sys.executable = %s" % sys.executable)
-                print("injecting into %s" % exe)
+                print(f"sys.executable = {sys.executable}")
+                print(f"injecting into {exe}")
                 p = run_program(program, exe=exe)
                 pyrasite.inject(p.pid,
                         'pyrasite/payloads/helloworld.py', verbose=True)
@@ -52,15 +52,16 @@ class TestCodeInjection(object):
         try:
             for exe in interpreters():
                 p = run_program(program, exe=exe)
-                for i in range(num_payloads):
+                for _ in range(num_payloads):
                     pyrasite.inject(p.pid,
                             'pyrasite/payloads/helloworld.py', verbose=True)
                 stop_program(p)
                 stdout, stderr = p.communicate()
-                count = 0
-                for line in stdout.decode('utf-8').split('\n'):
-                    if line.strip() == 'Hello World!':
-                        count += 1
+                count = sum(
+                    line.strip() == 'Hello World!'
+                    for line in stdout.decode('utf-8').split('\n')
+                )
+
                 assert count == num_payloads, "Read %d hello worlds" % count
         finally:
             os.unlink(program)
@@ -69,8 +70,8 @@ class TestCodeInjection(object):
         program = generate_program()
         try:
             for exe in interpreters():
-                print("sys.executable = %s" % sys.executable)
-                print("injecting into %s" % exe)
+                print(f"sys.executable = {sys.executable}")
+                print(f"injecting into {exe}")
                 p = run_program(program, exe=exe)
                 subprocess.call([sys.executable, 'pyrasite/main.py',
                     str(p.pid), 'pyrasite/payloads/helloworld.py'],

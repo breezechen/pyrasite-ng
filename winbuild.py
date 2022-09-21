@@ -3,7 +3,7 @@ import subprocess
 import os
 
 def compile(filename, outputfilename, arch='x86', vcver=None):
-    if vcver == None:
+    if vcver is None:
         if os.getenv('MSVCVER'):
             vcver = float(os.getenv('MSVCVER'))
         else:
@@ -17,7 +17,7 @@ def compile(filename, outputfilename, arch='x86', vcver=None):
         vcvars = os.path.join(productdir, 'bin',  bat)
 
     path = os.path.splitext(outputfilename)
-    objfilename = path[0] + '.obj'
+    objfilename = f'{path[0]}.obj'
     p = subprocess.Popen('"%s" %s & cl %s /Fe%s /Fo%s' % (vcvars, arch, filename, outputfilename, objfilename),
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)

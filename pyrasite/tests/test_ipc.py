@@ -70,9 +70,8 @@ class TestIPC(object):
         self.ipc.listen()
         payload = self.ipc.create_payload()
         assert os.path.exists(payload)
-        code = open(payload)
-        compile(code.read(), payload, 'exec')
-        code.close()
+        with open(payload) as code:
+            compile(code.read(), payload, 'exec')
         os.unlink(payload)
 
     def test_connect(self):

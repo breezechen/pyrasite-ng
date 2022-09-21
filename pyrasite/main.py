@@ -26,9 +26,8 @@ import pyrasite
 def ptrace_check():
     ptrace_scope = '/proc/sys/kernel/yama/ptrace_scope'
     if os.path.exists(ptrace_scope):
-        f = open(ptrace_scope)
-        value = int(f.read().strip())
-        f.close()
+        with open(ptrace_scope) as f:
+            value = int(f.read().strip())
         if value == 1:
             print("WARNING: ptrace is disabled. Injection will not work.")
             print("You can enable it by running the following:")
@@ -106,11 +105,11 @@ def main():
     if args.list_payloads:
         print("Available payloads:")
         for payload in list_payloads():
-            print("  %s" % payload)
+            print(f"  {payload}")
         sys.exit()
 
     # Make sure the output type is valid (procstreams || localterm)
-    if args.output_type != 'procstreams' and args.output_type != 'localterm':
+    if args.output_type not in ['procstreams', 'localterm']:
         print("Error: --output arg must be 'procstreams' or 'localterm'")
         sys.exit(5)
 
@@ -135,7 +134,7 @@ def main():
         ipc = pyrasite.PyrasiteIPC(pid, 'ReversePythonConnection',
                                    timeout=args.ipc_timeout)
         ipc.connect()
-        print("Pyrasite Shell %s" % pyrasite.__version__)
+        print(f"Pyrasite Shell {pyrasite.__version__}")
         print("Connected to '%s'" % ipc.title)
 
         # Read in the payload
