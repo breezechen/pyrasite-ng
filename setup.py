@@ -13,18 +13,17 @@ except Exception:
 
 version = '2.0.1'
 
-f = open('README.rst')
-long_description = f.read()
-f.close()
-
+with open('README.rst') as f:
+    long_description = f.read()
 requirements = ['urwid']
-if sys.version_info[0] == 3:
-    if sys.version_info[1] < 2:
-        requirements.append('argparse')
-elif sys.version_info[0] == 2:
-    if sys.version_info[1] < 7:
-        requirements.append('argparse')
-
+if (
+    sys.version_info[0] == 3
+    and sys.version_info[1] < 2
+    or sys.version_info[0] != 3
+    and sys.version_info[0] == 2
+    and sys.version_info[1] < 7
+):
+    requirements.append('argparse')
 tests_require = ['nose']
 
 class build_py(_build_py):

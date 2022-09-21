@@ -24,7 +24,7 @@ def shell():
     """Open a Python shell in a running process"""
 
     usage = "Usage: pyrasite-shell <PID>"
-    if not len(sys.argv) == 2:
+    if len(sys.argv) != 2:
         print(usage)
         sys.exit(1)
     try:
@@ -37,7 +37,7 @@ def shell():
                                timeout=os.getenv('PYRASITE_IPC_TIMEOUT') or 5)
     ipc.connect()
 
-    print("Pyrasite Shell %s" % pyrasite.__version__)
+    print(f"Pyrasite Shell {pyrasite.__version__}")
     print("Connected to '%s'" % ipc.title)
 
     prompt, payload = ipc.recv().split('\n', 1)

@@ -38,7 +38,7 @@ def generate_program(threads=1):
                 i += 1
     """)
     # CPU-bound threads
-    for t in range(threads):
+    for _ in range(threads):
         script += "threading.Thread(target=cpu_bound).start()\n"
     script += textwrap.dedent("""
         while os.path.exists(pidfile):
