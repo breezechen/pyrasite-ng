@@ -23,15 +23,15 @@ def inject(pid, filename, verbose=False, gdb_prefix=''):
     """Executes a file in a running Python process."""
     filename = os.path.abspath(filename)
     gdb_cmds = [
-        '((int (*)())PyGILState_Ensure)()',
-        '((int (*)(const char *))PyRun_SimpleString)("'
+        '((int (*)())PyPyGILState_Ensure)()',
+        '((int (*)(const char *))PyPyRun_SimpleString)("'
             'import sys; sys.path.insert(0, \\"%s\\"); '
             'sys.path.insert(0, \\"%s\\"); '
             'exec(open(\\"%s\\").read())")' %
                 (os.path.dirname(filename),
                 os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
                 filename),
-        '((void (*) (int) )PyGILState_Release)($1)',
+        '((void (*) (int) )PyPyGILState_Release)($1)',
         ]
     cmd = '%sgdb -p %d -batch %s' % (gdb_prefix, pid, ' '.join(["-eval-command='call %s'" % cmd for cmd in gdb_cmds]))
     p = subprocess.Popen(cmd,
