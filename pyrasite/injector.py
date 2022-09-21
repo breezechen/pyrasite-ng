@@ -18,13 +18,11 @@
 import os
 import platform
 import subprocess
-import tempfile
 
 
 def inject(pid, filename, verbose=False, gdb_prefix=''):
     """Executes a file in a running Python process."""
     filename = os.path.abspath(filename)
-    batch_file = tempfile.NamedTemporaryFile(delete=False)
     gdb_cmds = [
         'set trace-commands on',
         'set logging on',
@@ -39,11 +37,11 @@ def inject(pid, filename, verbose=False, gdb_prefix=''):
                 filename),
         'call ((void (*) (int) )PyPyGILState_Release)($1)',
         ]
-    batch_file.write('\n'.join(gdb_cmds).encode('utf-8'))
-    batch_file.close()
+    gdb_cmds_filename = '/tmp/pyrasite-gdb-commands'
+    with open(gdb_cmds_filename, 'w') as f:
+        f.write('\n'.join(gdb_cmds))
 
-
-    cmd = '%sgdb -p %d --batch --command=%s' % (gdb_prefix, pid, batch_file.name)
+    cmd = '%sgdb -p %d --batch --command=%s' % (gdb_prefix, pid, gdb_cmds_filename)
     if verbose:
         print('running gdb with cmd ' + cmd)
     
