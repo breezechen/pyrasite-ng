@@ -15,56 +15,94 @@
 #
 # Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
+import json
 import os
 import platform
 import subprocess
+import textwrap
 
 
-def inject(pid, filename, verbose=False, gdb_prefix=''):
+def inject(pid, filename, verbose=False, gdb_prefix=""):
     """Executes a file in a running Python process."""
     filename = os.path.abspath(filename)
-    gdb_cmds = [
-        'set trace-commands on',
-        'set logging on',
-        'set scheduler-locking off',
-        'call ((int (*)())PyPyGILState_Ensure)()',
-        'call ((int (*)(const char *))PyPyRun_SimpleString)("'
-            'import sys; sys.path.insert(0, \\"%s\\"); '
-            'sys.path.insert(0, \\"%s\\"); '
-            'exec(open(\\"%s\\").read())")' %
-                (os.path.dirname(filename),
-                os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
-                filename),
-        'call ((void (*) (int) )PyPyGILState_Release)($1)',
-        ]
-    gdb_cmds_filename = '/tmp/pyrasite-gdb-commands'
-    with open(gdb_cmds_filename, 'w') as f:
-        f.write('\n'.join(gdb_cmds))
+    err_filename = "/tmp/pyrasite-error.log"
 
-    cmd = '%sgdb -p %d --batch --command=%s' % (gdb_prefix, pid, gdb_cmds_filename)
+    python_payload = textwrap.dedent(
+        f"""
+        import sys
+        sys.path.insert(0, '{os.path.dirname(filename)}')
+        sys.path.insert(0, '{os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))}')
+        try:
+            exec(open('{filename}').read())
+        except Exception as e:
+            with open('{err_filename}', 'w') as f:
+                import traceback
+                f.write(traceback.format_exc())
+        """
+    )
+
+    gdb_cmds = [
+        "set trace-commands on",
+        "set logging on",
+        "set scheduler-locking off",
+        "call ((int (*)())PyPyGILState_Ensure)()",
+        f"call ((int (*)(const char *))PyPyRun_SimpleString)({json.dumps(python_payload)})",
+        "call ((void (*) (int) )PyPyGILState_Release)($1)",
+    ]
+    gdb_cmds_filename = "/tmp/pyrasite-gdb-commands"
+    with open(gdb_cmds_filename, "w") as f:
+        f.write("\n".join(gdb_cmds))
+
+    cmd = "%sgdb -p %d --batch --command=%s" % (gdb_prefix, pid, gdb_cmds_filename)
     if verbose:
-        print('running gdb with cmd ' + cmd)
-    
-    p = subprocess.Popen(cmd,
-        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print("running gdb with cmd " + cmd)
+
+    p = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     out, err = p.communicate()
     if verbose:
         print("====== gdb stdout: ======")
         print(out.decode("u8"))
         print("====== gdb stderr: ======")
         print(err.decode("u8"))
+        if os.path.exists(err_filename):
+            with open(err_filename) as f:
+                print("====== pyrasite error log: ======")
+                print(f.read())
         print("======")
 
-if platform.system() == 'Windows':
-    def inject_win(pid, filename, verbose=False, gdb_prefix=''):
-        if gdb_prefix == '':
-            gdb_prefix = os.path.join(os.path.dirname(__file__), 'win') + os.sep
+
+if platform.system() == "Windows":
+
+    def inject_win(pid, filename, verbose=False, gdb_prefix=""):
+        if gdb_prefix == "":
+            gdb_prefix = os.path.join(os.path.dirname(__file__), "win") + os.sep
         filename = os.path.abspath(filename)
-        code = 'import sys; sys.path.insert(0, \\"%s\\"); sys.path.insert(0, \\"%s\\"); exec(open(\\"%s\\").read())' % (os.path.dirname(filename).replace('\\', '/'), os.path.abspath(os.path.join(os.path.dirname(__file__), '..')).replace('\\', '/'), filename.replace('\\', '/'))
-        p = subprocess.Popen('%sinject_python_32.exe %d \"%s\"' % (gdb_prefix, pid, code), shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        code = (
+            'import sys; sys.path.insert(0, \\"%s\\"); sys.path.insert(0, \\"%s\\"); exec(open(\\"%s\\").read())'
+            % (
+                os.path.dirname(filename).replace("\\", "/"),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..")).replace(
+                    "\\", "/"
+                ),
+                filename.replace("\\", "/"),
+            )
+        )
+        p = subprocess.Popen(
+            '%sinject_python_32.exe %d "%s"' % (gdb_prefix, pid, code),
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         out, err = p.communicate()
         if p.wait() == 25:
-            p = subprocess.Popen('%sinject_python_64.exe %d \"%s\"' % (gdb_prefix, pid, code), shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+            p = subprocess.Popen(
+                '%sinject_python_64.exe %d "%s"' % (gdb_prefix, pid, code),
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             out, err = p.communicate()
         if verbose:
             print(out)

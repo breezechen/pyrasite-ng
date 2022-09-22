@@ -15,46 +15,48 @@
 #
 # Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
-import os
-import sys
 import glob
-import time
-import textwrap
-import tempfile
+import os
 import subprocess
+import tempfile
+import textwrap
+import time
 
 
 def generate_program(threads=1):
     (fd, filename) = tempfile.mkstemp()
-    tmp = os.fdopen(fd, 'w')
-    script = textwrap.dedent("""
+    tmp = os.fdopen(fd, "w")
+    script = textwrap.dedent(
+        """
         import os, time, threading
         running = True
         pidfile = '/tmp/pyrasite_%d' % os.getpid()
+        print('touching %s' % pidfile)
         open(pidfile, 'w').close()
         def cpu_bound():
             i = 0
             while running:
                 i += 1
-    """)
+    """
+    )
     # CPU-bound threads
     for t in range(threads):
         script += "threading.Thread(target=cpu_bound).start()\n"
-    script += textwrap.dedent("""
+    script += textwrap.dedent(
+        """
         while os.path.exists(pidfile):
             time.sleep(0.1)
         running = False
-    """)
+    """
+    )
     tmp.write(script)
     tmp.close()
     return filename
 
 
-def run_program(program, exe='/usr/bin/python'):
-    p = subprocess.Popen([exe, program],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-    flag = '/tmp/pyrasite_%d' % p.pid
+def run_program(program, exe="/usr/bin/python"):
+    p = subprocess.Popen([exe, program], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    flag = "/tmp/pyrasite_%d" % p.pid
     i = 0
     while not os.path.exists(flag):
         time.sleep(0.1)
@@ -65,13 +67,13 @@ def run_program(program, exe='/usr/bin/python'):
 
 
 def stop_program(p):
-    os.unlink('/tmp/pyrasite_%d' % p.pid)
+    os.unlink("/tmp/pyrasite_%d" % p.pid)
 
 
 def interpreters():
-    for exe in glob.glob('/usr/bin/python*.*'):
+    for exe in glob.glob("/usr/bin/python*.*"):
         try:
-            int(exe.split('.')[-1])
+            int(exe.split(".")[-1])
         except ValueError:
             continue  # skip python2.7-config, etc
         yield exe

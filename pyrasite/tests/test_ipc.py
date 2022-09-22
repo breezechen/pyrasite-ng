@@ -18,14 +18,12 @@
 import os
 import sys
 
-from nose.plugins.skip import SkipTest
-
 import pyrasite
-from pyrasite.tests.utils import run_program, generate_program, stop_program
+from nose.plugins.skip import SkipTest
+from pyrasite.tests.utils import generate_program, run_program, stop_program
 
 
 class TestIPCContextManager(object):
-
     def setUp(self):
         self.prog = generate_program()
         self.p = run_program(self.prog)
@@ -45,17 +43,17 @@ class TestIPCContextManager(object):
         # It really contains our test case, but we have pushed it out into
         # another module so that python 2.4 never sees it.
         import pyrasite.tests.context_manager_case
+
         pyrasite.tests.context_manager_case.context_manager_business(self)
 
 
 class TestIPC(object):
-
-    def setUp(self):
+    def setup_class(self):
         self.prog = generate_program()
-        self.p = run_program(self.prog)
+        self.p = run_program(self.prog, sys.executable)
         self.ipc = pyrasite.PyrasiteIPC(self.p.pid)
 
-    def tearDown(self):
+    def teardown_class(self):
         stop_program(self.p)
         self.ipc.close()
 
@@ -71,7 +69,7 @@ class TestIPC(object):
         payload = self.ipc.create_payload()
         assert os.path.exists(payload)
         code = open(payload)
-        compile(code.read(), payload, 'exec')
+        compile(code.read(), payload, "exec")
         code.close()
         os.unlink(payload)
 
@@ -82,13 +80,13 @@ class TestIPC(object):
 
     def test_cmd(self):
         self.ipc.connect()
-        assert self.ipc.cmd('print("mu")') == 'mu\n'
+        assert self.ipc.cmd('print("mu")') == "mu\n"
 
     def test_unreliable(self):
         self.ipc.reliable = False
         self.ipc.connect()
         out = self.ipc.cmd('print("mu")')
-        assert out == 'mu\n', out
+        assert out == "mu\n", out
 
     def test_repr(self):
         assert repr(self.ipc)
