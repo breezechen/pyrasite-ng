@@ -134,22 +134,22 @@ class PyrasiteIPC(object):
 
     def create_payload(self):
         """Write out a reverse python connection payload with a custom port"""
-        (fd, filename) = tempfile.mkstemp()
+        filename = '/tmp/pyrasite-payload.py'
         os.chmod(filename, 0o644)
-        tmp = os.fdopen(fd, 'w')
         path = dirname(abspath(pyrasite.__file__))
         payload = open(join(path, 'reverse.py'))
+        
+        with open(filename, 'w') as tmp:
+            for line in payload.readlines():
+                if line.startswith('#'):
+                    continue
+                line = line.replace('port = 9001', 'port = %d' % self.port)
+                if not self.reliable:
+                    line = line.replace('reliable = True', 'reliable = False')
+                tmp.write(line)
 
-        for line in payload.readlines():
-            if line.startswith('#'):
-                continue
-            line = line.replace('port = 9001', 'port = %d' % self.port)
-            if not self.reliable:
-                line = line.replace('reliable = True', 'reliable = False')
-            tmp.write(line)
+            tmp.write('%s().start()\n' % self.reverse)
 
-        tmp.write('%s().start()\n' % self.reverse)
-        tmp.close()
         payload.close()
 
         if platform.system() != 'Windows':
@@ -161,7 +161,7 @@ class PyrasiteIPC(object):
         """Inject the payload into the process."""
         filename = self.create_payload()
         pyrasite.inject(self.pid, filename, True)
-        os.unlink(filename)
+        #os.unlink(filename)
 
     def wait(self):
         """Wait for the injected payload to connect back to us"""
