@@ -135,21 +135,22 @@ class PyrasiteIPC(object):
     def create_payload(self):
         """Write out a reverse python connection payload with a custom port"""
         filename = '/tmp/pyrasite-payload.py'
-        os.chmod(filename, 0o644)
         path = dirname(abspath(pyrasite.__file__))
         payload = open(join(path, 'reverse.py'))
         
-        with open(filename, 'w') as tmp:
-            for line in payload.readlines():
-                if line.startswith('#'):
-                    continue
-                line = line.replace('port = 9001', 'port = %d' % self.port)
-                if not self.reliable:
-                    line = line.replace('reliable = True', 'reliable = False')
-                tmp.write(line)
+        tmp = open(filename, 'w')
+        for line in payload.readlines():
+            if line.startswith('#'):
+                continue
+            line = line.replace('port = 9001', 'port = %d' % self.port)
+            if not self.reliable:
+                line = line.replace('reliable = True', 'reliable = False')
+            tmp.write(line)
 
-            tmp.write('%s().start()\n' % self.reverse)
-
+        tmp.write('%s().start()\n' % self.reverse)
+        tmp.close()
+        os.chmod(filename, 0o644)
+        
         payload.close()
 
         if platform.system() != 'Windows':
